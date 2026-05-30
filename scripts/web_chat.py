@@ -204,8 +204,7 @@ def build_few_shot_prompt(query, retriever_data, recent_context=None):
     if retriever_data is None:
         return SYSTEM_PROMPT
 
-    vectorizer, matrix, texts = retriever_data
-    examples = retrieve_examples(query, vectorizer, matrix, texts, top_k=5)
+    examples = retrieve_examples(query, retriever_data, top_k=5)
 
     # 随机排列示例，避免固定模式
     if examples:
