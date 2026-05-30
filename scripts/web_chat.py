@@ -302,87 +302,104 @@ def chat_page():
 
     # ====== 侧边栏 ======
     with st.sidebar:
-        badge = "👑 管理员" if is_adm else ("🔓 授权" if is_au else "📝 访客")
+        # ---- 账号信息 ----
+        badge = "👑 管理员" if is_adm else ("🔓 授权用户" if is_au else "📝 访客")
         bc = "#fbbf24" if is_adm else ("#34d399" if is_au else "#6b7280")
         st.markdown(f"""
-        <div style="text-align:center;margin-bottom:12px;">
+        <div style="text-align:center;margin-bottom:16px;">
             <div style="font-size:32px;">{'👑' if is_adm else '👤'}</div>
             <div style="font-size:16px;font-weight:700;color:#e0e0f0;">{u}</div>
             <div style="font-size:10px;color:{bc};margin-top:2px;">{badge}</div>
         </div>""", unsafe_allow_html=True)
 
-        # API
-        if is_adm or is_au:
-            k = get_key()
-            masked = (k[:6] + "****" + k[-4:]) if len(k) > 10 else "(未配置)"
-            if not is_adm:
-                masked = "sk-****" + k[-4:] if len(k) > 10 else "(已配置)"
-            with st.expander("🔑 API 状态", expanded=False):
-                st.text_input("", value=masked, disabled=True, label_visibility="collapsed")
+        # ---- API 状态 ----
+        with st.expander("🔑 API", expanded=False):
+            if is_adm or is_au:
+                k = get_key()
+                masked = (k[:6] + "****" + k[-4:]) if len(k) > 10 else "(未配置)"
+                if not is_adm:
+                    masked = "sk-****" + k[-4:] if len(k) > 10 else "(已配置)"
+                st.text_input("密钥", value=masked, disabled=True, label_visibility="collapsed")
                 st.caption("DeepSeek · 已配置 · " + ("完整可见" if is_adm else "脱敏显示"))
-        else:
-            with st.expander("🔑 API 设置", expanded=not st.session_state.user_api_key):
-                nk = st.text_input("", type="password", value=st.session_state.user_api_key,
+            else:
+                nk = st.text_input("密钥", type="password", value=st.session_state.user_api_key,
                                    placeholder="sk-xxxxxxxx", label_visibility="collapsed")
                 if nk != st.session_state.user_api_key:
                     st.session_state.user_api_key = nk
                 st.caption("platform.deepseek.com 免费获取")
 
-        # 模型
-        with st.expander("⚙️ 对话设置", expanded=False):
+        # ---- 对话设置 ----
+        with st.expander("⚙️ 设置", expanded=False):
             st.session_state.sidebar_model = st.selectbox(
                 "模型", ["deepseek-chat", "deepseek-reasoner"],
                 format_func=lambda x: "💬 日常对话" if "chat" in x else "🧠 深度思考")
-            st.session_state.sidebar_temp = st.slider("随机度", 0.0, 1.5, 0.7, 0.1)
+            st.session_state.sidebar_temp = st.slider("随机度", 0.0, 1.5, 0.7, 0.1,
+                                                      help="0=稳定  1.5=创意")
+            st.caption("💡 日常聊天用「日常对话」即可")
 
-        # 统计
-        st.markdown("---")
-        n = len(st.session_state.messages) // 2
-        tks = len(SYSTEM_PROMPT) // 2 + sum(len(m["content"]) // 2 for m in st.session_state.messages)
-        cost = st.session_state.total_cost
-        st.markdown(f"""
-        <div class="stat-row">
-            <div class="stat-item"><div class="value">{n}</div><div class="label">轮对话</div></div>
-            <div class="stat-item"><div class="value">~{tks:,}</div><div class="label">Token</div></div>
-            <div class="stat-item"><div class="value">¥{cost:.4f}</div><div class="label">花费</div></div>
-        </div>""", unsafe_allow_html=True)
+        # ---- 统计 ----
+        with st.expander("📊 统计", expanded=bool(st.session_state.messages)):
+            n = len(st.session_state.messages) // 2
+            tks = len(SYSTEM_PROMPT) // 2 + sum(len(m["content"]) // 2 for m in st.session_state.messages)
+            cost = st.session_state.total_cost
+            st.markdown(f"""
+            <div class="stat-row">
+                <div class="stat-item"><div class="value">{n}</div><div class="label">轮对话</div></div>
+                <div class="stat-item"><div class="value">~{tks:,}</div><div class="label">Token</div></div>
+                <div class="stat-item"><div class="value">¥{cost:.4f}</div><div class="label">花费</div></div>
+            </div>""", unsafe_allow_html=True)
 
-        st.markdown("---")
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button("🔄 新对话", use_container_width=True):
+        # ---- 工具 ----
+        with st.expander("🛠 工具", expanded=False):
+            if st.button("🗑 清空对话", use_container_width=True):
                 st.session_state.messages = []
                 st.session_state.total_cost = 0.0
                 st.rerun()
-        with c2:
             if st.session_state.messages:
                 txt = "\n\n".join(f"{'你' if m['role']=='user' else '张仕达'}：{m['content']}"
                                   for m in st.session_state.messages)
-                st.download_button("📥 导出", txt, f"聊天_{datetime.now():%m%d_%H%M}.txt",
+                st.download_button("📥 导出记录", txt, f"聊天_{datetime.now():%m%d_%H%M}.txt",
                                    use_container_width=True)
+            else:
+                st.caption("暂无对话记录")
 
+        # ---- 关于 ----
+        with st.expander("ℹ️ 关于", expanded=False):
+            st.markdown("""
+            <div style="font-size:12px;color:#9ca3af;line-height:1.8;">
+            <b>张仕达的数字分身</b><br>
+            人格模型版本：V5<br>
+            训练数据：24,060 条微信消息<br>
+            数据时间：2024.08 - 2026.05<br>
+            驱动模型：DeepSeek<br>
+            部署平台：Streamlit Cloud<br>
+            源码：<a href="https://github.com/pythonqq3/persona-chat" style="color:#a8c0ff;">GitHub</a><br>
+            域名：chat.061230zsd.xyz<br>
+            <br>
+            ⚠️ 本AI仅供娱乐，<br>
+            不构成真实意见或立场
+            </div>
+            """, unsafe_allow_html=True)
+
+        # ---- 退出 ----
         st.markdown("---")
-        # 退出确认
-        if "show_logout_confirm" not in st.session_state:
-            st.session_state.show_logout_confirm = False
-
-        if not st.session_state.show_logout_confirm:
+        if "show_logout" not in st.session_state:
+            st.session_state.show_logout = False
+        if not st.session_state.show_logout:
             if st.button("🚪 退出登录", use_container_width=True):
-                st.session_state.show_logout_confirm = True
+                st.session_state.show_logout = True
                 st.rerun()
         else:
-            st.warning("确定要退出吗？对话记录将清空")
+            st.warning("退出将清空当前对话")
             cq1, cq2 = st.columns(2)
             with cq1:
-                if st.button("✅ 确认退出", use_container_width=True, type="primary"):
-                    st.session_state.show_logout_confirm = False
+                if st.button("✅ 确认", use_container_width=True, type="primary"):
+                    st.session_state.show_logout = False
                     logout()
             with cq2:
                 if st.button("❌ 取消", use_container_width=True):
-                    st.session_state.show_logout_confirm = False
+                    st.session_state.show_logout = False
                     st.rerun()
-
-        st.caption("⚡ DeepSeek · 人格 V5")
 
     # ====== 主区域 ======
     c1, c2 = st.columns([5, 1])
