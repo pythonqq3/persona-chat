@@ -197,7 +197,7 @@ INIT = {
     "logged_in": False, "username": "", "is_admin": False, "is_authorized": False,
     "user_api_key": "", "messages": [], "total_cost": 0.0,
     "login_mode": "login", "login_error": "",
-    "model": "deepseek-chat", "temp": 0.7, "show_logout": False,
+    "model": "deepseek-chat", "temp": 0.7, "show_logout": False, "card_error": "",
 }
 for k, v in INIT.items():
     if k not in st.session_state: st.session_state[k] = v
@@ -465,9 +465,27 @@ def chat_page():
         for i, (icon, topic) in enumerate(WELCOME_TOPICS):
             with cols[i]:
                 if st.button(f"{icon}\n{topic}", key=f"wcard_{i}", use_container_width=True):
-                    st.session_state.messages.append({"role": "user", "content": topic})
-                    st.rerun()
+                    if not key:
+                        st.session_state.card_error = "请先配置 API Key"
+                        st.rerun()
+                    else:
+                        st.session_state.messages.append({"role": "user", "content": topic})
+                        try:
+                            msgs = [{"role": "system", "content": SYSTEM_PROMPT}] + st.session_state.messages
+                            reply, usage = call_api(msgs, key, st.session_state.model, st.session_state.temp)
+                            st.session_state.messages.append({"role": "assistant", "content": reply})
+                            if usage:
+                                cost = (usage.get("prompt_tokens", 0) * 1 +
+                                        usage.get("completion_tokens", 0) * 2) / 1_000_000
+                                st.session_state.total_cost += cost
+                        except Exception as e:
+                            st.session_state.messages.append(
+                                {"role": "assistant", "content": f"_(出错了：{str(e)[:80]})_"})
+                        st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
+        if st.session_state.card_error:
+            st.error(st.session_state.card_error)
+            st.session_state.card_error = ""
 
     # ====== 对话 ======
     for msg in st.session_state.messages:
