@@ -3,7 +3,7 @@
 """
 
 import streamlit as st
-import json, urllib.request, urllib.error, os, re, hashlib, pickle, random
+import json, urllib.request, urllib.error, os, re, hashlib, pickle, random, time
 from datetime import datetime
 from pathlib import Path
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -318,6 +318,7 @@ def active_key():
 
 def do_logout():
     for k, v in INIT.items(): st.session_state[k] = v
+    st.query_params.clear()
     st.rerun()
 
 
@@ -344,6 +345,7 @@ def auth_page():
         st.markdown('<p class="lc-sub">授权用户自动配置 API，无需手动填写</p>', unsafe_allow_html=True)
         u = st.text_input("用户名", key="li_u", placeholder="输入用户名", label_visibility="collapsed")
         p = st.text_input("密码", type="password", key="li_p", placeholder="输入密码", label_visibility="collapsed")
+        remember = st.checkbox("记住我（30天内免登录）", value=True)
         c1, c2 = st.columns(2)
         with c1:
             if st.button("登 录", use_container_width=True, type="primary"):
@@ -354,7 +356,12 @@ def auth_page():
                         st.session_state.username = u
                         st.session_state.is_authorized = True
                         st.session_state.is_admin = u in ad
-                        st.session_state.login_error = ""; st.rerun()
+                        st.session_state.login_error = ""
+                        # 记住我：存 token 到 URL
+                        if remember:
+                            token = make_token(u)
+                            st.query_params["token"] = token
+                        st.rerun()
                     else: st.session_state.login_error = "密码错误"; st.rerun()
                 else: st.session_state.login_error = "账号不存在，请先注册"; st.rerun()
         with c2:
@@ -644,6 +651,50 @@ def chat_page():
                     ph.error(f"网络异常：{str(e)[:100]}")
             st.rerun()
 
+
+# ============================================================
+# 自动登录：检查 URL 参数中的记住我 token
+# ============================================================
+REMEMBER_SECRET = "zsd_remember_2025"
+
+def make_token(username):
+    ts = int(time.time())
+    raw = f"{username}:{ts}:{REMEMBER_SECRET}"
+    sig = hashlib.sha256(raw.encode()).hexdigest()[:16]
+    return f"{username}:{ts}:{sig}"
+
+def verify_token(token):
+    try:
+        parts = token.split(":")
+        if len(parts) != 3: return None
+        username, ts_str, sig = parts
+        # 检查签名
+        raw = f"{username}:{ts_str}:{REMEMBER_SECRET}"
+        expected = hashlib.sha256(raw.encode()).hexdigest()[:16]
+        if sig != expected: return None
+        # 检查有效期（30天）
+        if time.time() - int(ts_str) > 30 * 86400: return None
+        return username
+    except:
+        return None
+
+# 页面加载时检测 token
+if not st.session_state.logged_in:
+    try:
+        url_token = st.query_params.get("token")
+        if url_token:
+            username = verify_token(url_token)
+            if username:
+                au = get_auth_users()
+                ad = get_admin_set()
+                if username in au:
+                    st.session_state.logged_in = True
+                    st.session_state.username = username
+                    st.session_state.is_authorized = True
+                    st.session_state.is_admin = username in ad
+                    st.rerun()
+    except:
+        pass
 
 # ============================================================
 chat_page() if st.session_state.logged_in else auth_page()
