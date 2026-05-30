@@ -23,19 +23,28 @@ st.markdown("""
 * { font-family: 'Noto Sans SC', -apple-system, sans-serif; }
 #MainMenu, footer, header { visibility: hidden; }
 
-/* === 全局背景 + 全屏 === */
+/* === 全局背景 + 全屏（暴力解除所有宽度限制）=== */
 .stApp {
     background: linear-gradient(160deg, #0a0a14 0%, #111827 40%, #0f1729 100%);
 }
-[data-testid="stAppViewContainer"] > .main {
+/* 干掉 Streamlit 所有的 max-width */
+.stMainBlockContainer,
+[data-testid="stAppViewContainer"],
+[data-testid="stAppViewContainer"] > div,
+[data-testid="stVerticalBlockBorderWrapper"],
+[data-testid="stVerticalBlock"],
+section.main > div,
+section.main > div > div,
+section.main > div > div > div {
     max-width: 100% !important;
 }
+/* 调整外边距 */
 .block-container {
     max-width: 100% !important;
-    padding: 1rem 2rem !important;
+    padding: 0.5rem 1.5rem !important;
 }
-[data-testid="stVerticalBlock"] {
-    max-width: 100% !important;
+@media (min-width: 768px) {
+    .block-container { padding: 1rem 2rem !important; }
 }
 
 /* === 侧边栏 === */
