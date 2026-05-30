@@ -362,12 +362,16 @@ def show_chat_page():
             with st.expander("🔑 API 管理", expanded=False):
                 k = get_api_key()
                 masked = k[:6] + "****" + k[-4:] if len(k) > 10 else "(未配置)"
-                st.code(masked, language=None)
-                st.caption("完整密钥存储在服务器环境，不可导出")
+                st.text_input("密钥", value=masked, disabled=True, label_visibility="collapsed")
+                st.caption("完整 Key 储存在服务器，不可导出")
+                st.caption(f"服务商：DeepSeek | 模型：{st.session_state.sidebar_model}")
         elif is_auth:
             with st.expander("🔑 API 状态", expanded=False):
-                st.success("已自动配置 ✅")
-                st.caption("由管理员统一管理，密钥不可见")
+                k = get_api_key()
+                masked = "sk-****" + k[-4:] if len(k) > 10 else "(未配置)"
+                st.text_input("密钥", value=masked, disabled=True, label_visibility="collapsed")
+                st.caption("已由管理员配置，完整 Key 不可见")
+                st.caption(f"服务商：DeepSeek | 模型：{st.session_state.sidebar_model}")
         else:
             with st.expander("🔑 API 设置", expanded=not st.session_state.user_api_key):
                 new_key = st.text_input("你的 Key", type="password",
