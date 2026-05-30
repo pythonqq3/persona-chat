@@ -65,6 +65,27 @@ st.markdown("""
 .type-dots span:nth-child(2){animation-delay:.2s}
 .type-dots span:nth-child(3){animation-delay:.4s}
 @keyframes td{0%,60%,100%{opacity:.15}30%{opacity:1}}
+/* 设置按钮——显眼 */
+.settings-btn button {
+    background: #1a1a2e !important;
+    border: 1px solid #2a2a3e !important;
+    color: #a5b4fc !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+}
+.settings-btn button:hover {
+    background: #232342 !important;
+    border-color: #6366f1 !important;
+}
+/* 设置面板 */
+.settings-panel {
+    background: #0f0f18;
+    border: 1px solid #1e1e2e;
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin: 12px 0;
+}
+
 /* 登录 */
 .login-wrap{display:flex;align-items:center;justify-content:center;min-height:85vh;flex-direction:column;gap:18px}
 .login-brand{text-align:center}
@@ -353,30 +374,89 @@ def chat_page():
                 if st.button("❌ 取消", use_container_width=True):
                     st.session_state.show_logout = False; st.rerun()
 
-    # ====== 主区域 ======
-    # 顶部信息
-    st.markdown(f"""
-    <div class="top-bar">
-        <div class="brand">
-            <div class="avatar">张</div>
-            <div>
-                <div class="name">张仕达</div>
-                <div class="desc">19岁 · 大学生 · 打羽毛球 · 写诗词 · 偶尔毒舌</div>
+    # ====== 主区域顶部 ======
+    ctop, cset = st.columns([6, 1])
+    with ctop:
+        st.markdown(f"""
+        <div class="top-bar">
+            <div class="brand">
+                <div class="avatar">张</div>
+                <div>
+                    <div class="name">张仕达</div>
+                    <div class="desc">19岁 · 大学生 · 打羽毛球 · 写诗词 · 偶尔毒舌</div>
+                </div>
             </div>
+            <div class="status"><div class="status-dot"></div>{'分身在线' if key else '未连接'}</div>
         </div>
-        <div class="status">
-            <div class="status-dot"></div>{'分身在线' if key else '未连接'}
+        <div class="tag-row">
+            <span class="tag-item">🏸 羽毛球</span>
+            <span class="tag-item">📝 写诗词</span>
+            <span class="tag-item">☯ 道家思想</span>
+            <span class="tag-item">🎮 王者荣耀</span>
+            <span class="tag-item">💻 编程</span>
+            <span class="tag-item">🏃 跑步</span>
         </div>
-    </div>
-    <div class="tag-row">
-        <span class="tag-item">🏸 羽毛球</span>
-        <span class="tag-item">📝 写诗词</span>
-        <span class="tag-item">☯ 道家思想</span>
-        <span class="tag-item">🎮 王者荣耀</span>
-        <span class="tag-item">💻 编程</span>
-        <span class="tag-item">🏃 跑步</span>
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
+    with cset:
+        # 显眼的设置入口
+        show_settings = st.button("⚙️ 设置", use_container_width=True, key="show_settings_btn",
+                                  help="API密钥、模型、创意度等")
+
+    # 点击设置按钮 → 弹出设置面板
+    if "show_settings_panel" not in st.session_state:
+        st.session_state.show_settings_panel = False
+    if show_settings:
+        st.session_state.show_settings_panel = not st.session_state.show_settings_panel
+
+    if st.session_state.show_settings_panel:
+        st.markdown("---")
+        st.subheader("⚙️ 设置")
+        sc1, sc2, sc3 = st.columns(3)
+
+        with sc1:
+            st.caption("🔑 API 密钥")
+            if is_adm or is_au:
+                k = get_api_key()
+                m = (k[:6] + "····" + k[-4:]) if len(k) > 10 else "(未配置)"
+                if not is_adm: m = "sk-····" + k[-4:] if len(k) > 10 else "(已配置)"
+                st.text_input("密钥状态", value=m, disabled=True, key="main_api_show",
+                              label_visibility="collapsed")
+                st.caption("DeepSeek · " + ("完整可见" if is_adm else "脱敏显示"))
+            else:
+                nk = st.text_input("你的 Key", type="password", value=st.session_state.user_api_key,
+                                   placeholder="sk-xxx", key="main_api_input", label_visibility="collapsed")
+                if nk != st.session_state.user_api_key: st.session_state.user_api_key = nk
+                st.caption("platform.deepseek.com 免费获取")
+
+        with sc2:
+            st.caption("🧠 模型")
+            st.session_state.model = st.selectbox(
+                "选择模型", ["deepseek-chat", "deepseek-reasoner"],
+                format_func=lambda x: "💬 日常对话" if "chat" in x else "🧠 深度思考",
+                key="main_model")
+
+        with sc3:
+            st.caption("🎨 创意度")
+            raw_temp = st.slider("", 0.0, 1.5, st.session_state.temp, 0.1,
+                                 help="0=保守稳定  1.5=天马行空", key="main_temp")
+            st.session_state.temp = round(raw_temp, 1)
+
+        # 快捷操作
+        st.caption("🛠 快捷操作")
+        bc1, bc2, bc3, bc4 = st.columns(4)
+        with bc1:
+            n = len(st.session_state.messages) // 2
+            tks = len(SYSTEM_PROMPT) // 2 + sum(len(m["content"]) // 2 for m in st.session_state.messages)
+            st.metric("对话轮数", n)
+        with bc2:
+            st.metric("Token 估算", f"~{tks:,}")
+        with bc3:
+            st.metric("本次花费", f"¥{st.session_state.total_cost:.4f}")
+        with bc4:
+            if st.button("🗑 清空对话", use_container_width=True, key="main_clear"):
+                st.session_state.messages = []; st.session_state.total_cost = 0.0; st.rerun()
+
+        st.markdown("---")
 
     # ====== 可点击话题卡片 ======
     if not st.session_state.messages:
