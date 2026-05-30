@@ -350,7 +350,8 @@ INIT = {
     "logged_in": False, "username": "", "is_admin": False, "is_authorized": False,
     "user_api_key": "", "messages": [], "total_cost": 0.0,
     "login_mode": "login", "login_error": "",
-    "model": "deepseek-chat", "temp": 0.7, "show_logout": False, "card_error": "",
+    "model": "deepseek-chat", "temp": 0.7, "show_logout": False,
+    "auto_logged_in": False, "card_error": "",
 }
 for k, v in INIT.items():
     if k not in st.session_state: st.session_state[k] = v
@@ -785,8 +786,8 @@ def verify_token(token):
     except:
         return None
 
-# 页面加载时检测 token
-if not st.session_state.logged_in:
+# 页面加载时检测 token（仅第一次，防止循环）
+if not st.session_state.logged_in and not st.session_state.get("auto_logged_in", False):
     try:
         url_token = st.query_params.get("token")
         if url_token:
@@ -802,6 +803,8 @@ if not st.session_state.logged_in:
                     saved = load_conversation(username)
                     if saved:
                         st.session_state.messages = saved
+                    # 防止重定向循环：标记已自动登录
+                    st.session_state.auto_logged_in = True
                     st.rerun()
     except:
         pass
