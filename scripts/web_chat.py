@@ -9,7 +9,7 @@ from pathlib import Path
 
 st.set_page_config(
     page_title="张仕达 · 数字分身", page_icon="👤", layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
     menu_items={"Get Help": None, "Report a bug": None, "About": "张仕达的数字分身"},
 )
 
