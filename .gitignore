@@ -10,3 +10,4 @@ __pycache__/
 # 分析中间文件
 output/persona_report.txt
 output/persona_analysis.json
+img/
