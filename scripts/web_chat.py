@@ -162,26 +162,29 @@ def build_retriever():
 
 
 def retrieve_examples(query, vectorizer, matrix, texts, top_k=5):
-    """检索与 query 最相似的 top_k 条真实消息"""
+    """检索与 query 语义相关的真实消息，从 top-20 中随机采样避免重复"""
     if not query or len(query.strip()) < 2:
         return random.sample(texts, min(top_k, len(texts)))
 
     query_vec = vectorizer.transform([query])
     similarities = cosine_similarity(query_vec, matrix)[0]
 
-    # 排除完全一样的消息
+    # 取 top-20，去重
     top_indices = similarities.argsort()[::-1]
-    results = []
+    candidates = []
     seen = set()
     for idx in top_indices:
-        if len(results) >= top_k:
+        if len(candidates) >= 20:
             break
         text = texts[idx].strip()
-        if text != query.strip() and text not in seen:
+        if text != query.strip() and text not in seen and len(text) >= 3:
             seen.add(text)
-            results.append(text)
+            candidates.append(text)
 
-    return results
+    # 从候选中随机采样，增加多样性
+    if len(candidates) <= top_k:
+        return candidates
+    return random.sample(candidates, top_k)
 
 
 def build_few_shot_prompt(query, retriever_data, recent_context=None):
@@ -200,10 +203,10 @@ def build_few_shot_prompt(query, retriever_data, recent_context=None):
 
     # 少样本示例
     if examples:
-        parts.append("\n\n## 以下是你在类似情境下的真实回复（必须模仿语气和节奏）：\n")
+        parts.append("\n\n## 以下是你过去在类似情境下的真实回复（仅供感受语气，严禁照抄）：\n")
         for i, ex in enumerate(examples, 1):
             parts.append(f"{i}. {ex}")
-        parts.append("\n用和上面完全一致的语气、长度、用词来回复。")
+        parts.append("\n参考上面的语气和节奏，但必须用自己的话重新组织。不要复述对方的原话，不要说教，不要当复读机。")
 
     # 逻辑一致性 + 上下文记忆
     parts.append(f"""
