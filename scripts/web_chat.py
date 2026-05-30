@@ -241,6 +241,35 @@ WELCOME_TOPICS = [
 
 
 # ============================================================
+# 对话持久化存储
+# ============================================================
+CONV_DIR = Path(__file__).parent.parent / "data" / "conversations"
+
+def save_conversation(username, messages):
+    """保存用户对话到文件"""
+    CONV_DIR.mkdir(parents=True, exist_ok=True)
+    filepath = CONV_DIR / f"{username}.json"
+    # 只保存最近 200 条，避免文件过大
+    recent = messages[-200:] if len(messages) > 200 else messages
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(recent, f, ensure_ascii=False)
+
+def load_conversation(username):
+    """加载用户的对话历史"""
+    filepath = CONV_DIR / f"{username}.json"
+    if filepath.exists():
+        with open(filepath, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return []
+
+def delete_conversation(username):
+    """删除用户对话文件"""
+    filepath = CONV_DIR / f"{username}.json"
+    if filepath.exists():
+        filepath.unlink()
+
+
+# ============================================================
 # 认证——兼容旧哈希（无盐）和新哈希（有盐）
 # ============================================================
 SALT = "zsd_persona_2024"
@@ -357,7 +386,11 @@ def auth_page():
                         st.session_state.is_authorized = True
                         st.session_state.is_admin = u in ad
                         st.session_state.login_error = ""
-                        # 记住我：存 token 到 URL
+                        # 加载历史对话
+                        saved = load_conversation(u)
+                        if saved:
+                            st.session_state.messages = saved
+                        # 记住我
                         if remember:
                             token = make_token(u)
                             st.query_params["token"] = token
@@ -459,7 +492,8 @@ def chat_page():
 
         with st.expander("🛠 工具", expanded=False):
             if st.button("🗑 清空对话", use_container_width=True):
-                st.session_state.messages = []; st.session_state.total_cost = 0.0; st.rerun()
+                st.session_state.messages = []; st.session_state.total_cost = 0.0
+                delete_conversation(st.session_state.username); st.rerun()
             if st.session_state.messages:
                 txt = "\n\n".join(
                     f"{'你' if m['role'] == 'user' else '张仕达'}：{m['content']}"
@@ -603,6 +637,8 @@ def chat_page():
                                     cost = (usage.get("prompt_tokens", 0) * 1 +
                                             usage.get("completion_tokens", 0) * 2) / 1_000_000
                                     st.session_state.total_cost += cost
+                                # 保存对话
+                                save_conversation(u, st.session_state.messages)
                             except Exception as e:
                                 st.session_state.messages.append(
                                     {"role": "assistant", "content": f"_(出错了：{str(e)[:80]})_"})
@@ -642,6 +678,8 @@ def chat_page():
                         cost = (usage.get("prompt_tokens", 0) * 1 +
                                 usage.get("completion_tokens", 0) * 2) / 1_000_000
                         st.session_state.total_cost += cost
+                    # 保存对话
+                    save_conversation(u, st.session_state.messages)
                 except urllib.error.HTTPError as e:
                     msgs_map = {401: "密钥无效，请检查 API Key",
                                 402: "余额不足，请联系管理员充值",
@@ -692,6 +730,9 @@ if not st.session_state.logged_in:
                     st.session_state.username = username
                     st.session_state.is_authorized = True
                     st.session_state.is_admin = username in ad
+                    saved = load_conversation(username)
+                    if saved:
+                        st.session_state.messages = saved
                     st.rerun()
     except:
         pass
