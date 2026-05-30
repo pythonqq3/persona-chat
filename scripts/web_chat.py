@@ -106,7 +106,20 @@ st.markdown("""
 .stat-item .sv{font-size:17px;font-weight:600;color:#a5b4fc}
 .stat-item .sl{font-size:10px;color:#585870;margin-top:1px}
 /* 响应式 */
-@media(max-width:768px){.block-container{padding:.5rem 1rem!important}.login-card{width:auto;margin:20px 16px;padding:32px 24px}}
+/* ======== 手机端优化 ======== */
+@media(max-width:768px){
+    .block-container{padding:.25rem .75rem!important}
+    .login-card{width:90vw!important;margin:12px auto!important;padding:28px 20px!important}
+    .login-brand .lb-name{font-size:17px}
+    .top-bar{flex-direction:column;align-items:flex-start;gap:8px}
+    .top-bar .desc{font-size:11px}
+    .tag-row{gap:4px;margin-bottom:12px}
+    .tag-item{font-size:11px;padding:3px 10px}
+    [data-testid="stChatInput"] textarea{font-size:16px!important}
+    [data-testid="stChatInput"]{position:sticky;bottom:0;background:#0d0d12;padding:8px 0}
+    .stButton>button{font-size:16px!important}
+    .welcome-wrap .stButton>button{min-height:70px!important;padding:16px 8px!important;font-size:12px!important}
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -551,7 +564,7 @@ def chat_page():
     # ====== 可点击话题卡片 ======
     if not st.session_state.messages:
         st.markdown('<div class="welcome-wrap">', unsafe_allow_html=True)
-        cols = st.columns(6)
+        cols = st.columns(3)
         for i, (icon, topic) in enumerate(WELCOME_TOPICS):
             with cols[i]:
                 if st.button(f"{icon}\n{topic}", key=f"wcard_{i}", use_container_width=True):
