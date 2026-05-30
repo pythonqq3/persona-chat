@@ -6,32 +6,44 @@
   <title>张仕达的数字分身</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      background: #0e1117;
-      width: 100vw; height: 100vh;
-      overflow: hidden;
-    }
-    iframe {
-      width: 100vw; height: 100vh;
-      border: none;
-      display: block;
-    }
-    .loading {
-      color: #888; font-size: 18px; text-align: center; padding: 40px;
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      position: absolute; top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-    }
+    body { background: #0e1117; width: 100vw; height: 100vh; overflow: hidden; }
+    iframe { width: 100vw; height: 100vh; border: none; display: block; }
   </style>
 </head>
 <body>
-  <div id="loader" class="loading">加载中...</div>
-  <iframe
-    id="app"
-    src="https://zhangshida.streamlit.app/"
-    style="display:none;"
-    onload="document.getElementById('loader').style.display='none';this.style.display='block';"
-    allow="microphone; camera"
-  ></iframe>
+  <iframe id="app" src="" allow="microphone; camera"></iframe>
+  <script>
+    var baseUrl = 'https://zhangshida.streamlit.app/';
+    var query = window.location.search;
+
+    // 如果当前 URL 没有 token，尝试从 localStorage 恢复
+    if (!query.includes('token=')) {
+      var savedToken = localStorage.getItem('zsd_remember_token');
+      if (savedToken) {
+        query = query ? query + '&token=' + savedToken : '?token=' + savedToken;
+      }
+    } else {
+      // 有 token 就存到 localStorage
+      var match = query.match(/token=([^&]+)/);
+      if (match) {
+        localStorage.setItem('zsd_remember_token', match[1]);
+      }
+    }
+
+    document.getElementById('app').src = baseUrl + query;
+
+    // 定期同步——检测 iframe URL 变化并更新父页面和 localStorage
+    setInterval(function() {
+      try {
+        var iframeUrl = document.getElementById('app').contentWindow.location.href;
+        var tokenMatch = iframeUrl.match(/token=([^&]+)/);
+        if (tokenMatch && tokenMatch[1] !== localStorage.getItem('zsd_remember_token')) {
+          localStorage.setItem('zsd_remember_token', tokenMatch[1]);
+          var newUrl = window.location.pathname + '?token=' + tokenMatch[1];
+          window.history.replaceState({}, '', newUrl);
+        }
+      } catch(e) {} // 跨域错误忽略
+    }, 3000);
+  </script>
 </body>
 </html>
