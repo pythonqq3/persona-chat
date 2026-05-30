@@ -171,27 +171,42 @@ def retrieve_examples(query, vectorizer, matrix, texts, top_k=5):
     return results
 
 
-def build_few_shot_prompt(query, retriever_data):
-    """构建包含少样本示例的完整系统提示词"""
+def build_few_shot_prompt(query, retriever_data, recent_context=None):
+    """构建包含少样本示例 + 逻辑自检的完整系统提示词"""
     if retriever_data is None:
         return SYSTEM_PROMPT
 
     vectorizer, matrix, texts = retriever_data
     examples = retrieve_examples(query, vectorizer, matrix, texts, top_k=5)
 
-    if not examples:
-        return SYSTEM_PROMPT
-
     # 随机排列示例，避免固定模式
-    random.shuffle(examples)
+    if examples:
+        random.shuffle(examples)
 
-    few_shot_block = "\n\n## 以下是你在类似情境下的真实回复（必须模仿这种语气和节奏）：\n\n"
-    for i, ex in enumerate(examples, 1):
-        few_shot_block += f"{i}. {ex}\n"
+    parts = [SYSTEM_PROMPT]
 
-    few_shot_block += "\n用和上面完全一致的语气、长度、用词来回复当前消息。"
+    # 少样本示例
+    if examples:
+        parts.append("\n\n## 以下是你在类似情境下的真实回复（必须模仿语气和节奏）：\n")
+        for i, ex in enumerate(examples, 1):
+            parts.append(f"{i}. {ex}")
+        parts.append("\n用和上面完全一致的语气、长度、用词来回复。")
 
-    return SYSTEM_PROMPT + few_shot_block
+    # 逻辑一致性检查
+    parts.append("""
+
+## 逻辑一致性铁律（每次回复前必须自检）
+
+1. **记住自己刚说过的话**：如果几轮前说过"A"，现在不能说"非A"。被追问时可以用"我之前不是说了吗"带过，但绝不能推翻自己
+2. **前后一致**：已经说过没谈过恋爱，就不能忽然聊前任。已经说过五公里18分19，下次不能再编一个数字
+3. **不要左右互搏**：同一轮回复里不能前半句说"还行"，后半句说"不太行"。选一个立场站住
+4. **被质疑时**：如果真的前后矛盾了，用自嘲化解——"啊？我说过吗 忘了"或"行吧 那我记错了"——而不是硬圆场
+5. **不确定的事不编**：不知道就说不知道，不要为了连贯而编造
+
+在生成回复前，先扫一眼对话历史，确认这次说的话和之前不冲突。
+""")
+
+    return "\n".join(parts)
 
 
 WELCOME_TOPICS = [
@@ -546,7 +561,9 @@ def chat_page():
                     else:
                         st.session_state.messages.append({"role": "user", "content": topic})
                         try:
-                            few_shot = build_few_shot_prompt(topic, retriever)
+                            recent = [m for m in st.session_state.messages[-6:] if m["role"] == "assistant"]
+                            recent_text = " | ".join(m["content"][:40] for m in recent) if recent else ""
+                            few_shot = build_few_shot_prompt(topic, retriever, recent_text)
                             msgs = [{"role": "system", "content": few_shot}] + st.session_state.messages
                             reply, usage = call_api(msgs, key, st.session_state.model, st.session_state.temp)
                             st.session_state.messages.append({"role": "assistant", "content": reply})
@@ -582,7 +599,9 @@ def chat_page():
                 ph.markdown('<div class="type-dots"><span></span><span></span><span></span></div>',
                             unsafe_allow_html=True)
                 try:
-                    few_shot = build_few_shot_prompt(prompt, retriever)
+                    recent = [m for m in st.session_state.messages[-6:] if m["role"] == "assistant"]
+                    recent_text = " | ".join(m["content"][:40] for m in recent) if recent else ""
+                    few_shot = build_few_shot_prompt(prompt, retriever, recent_text)
                     msgs = [{"role": "system", "content": few_shot}] + st.session_state.messages
                     reply, usage = call_api(msgs, key, st.session_state.model, st.session_state.temp)
                     ph.markdown(reply)
