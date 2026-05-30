@@ -1,0 +1,12 @@
+# 聊天原始数据（隐私）
+data/raw/
+data/clean/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# 分析中间文件
+output/persona_report.txt
+output/persona_analysis.json
