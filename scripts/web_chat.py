@@ -3,11 +3,9 @@
 """
 
 import streamlit as st
-import json, urllib.request, urllib.error, os, re, hashlib, pickle, random, time
+import json, urllib.request, urllib.error, os, re, hashlib, pickle, random, time, numpy as np
 from datetime import datetime
 from pathlib import Path
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
 
 st.set_page_config(
     page_title="张仕达", page_icon="👤", layout="wide",
@@ -139,52 +137,66 @@ SYSTEM_PROMPT = load_skill()
 
 
 # ============================================================
-# L2 检索系统：从真实消息中匹配最相似的回复示例
+# L2+ 语义 Embedding 检索系统
 # ============================================================
 @st.cache_resource
 def build_retriever():
-    """构建 TF-IDF 检索器。返回 (vectorizer, matrix, messages_list)"""
-    data_path = Path(__file__).parent.parent / "data" / "clean" / "cleaned_messages.json"
-    with open(data_path, "r", encoding="utf-8") as f:
-        messages = json.load(f)
-
-    texts = [m["content"] for m in messages if len(m["content"]) >= 3]
-
-    vectorizer = TfidfVectorizer(
-        analyzer="char",
-        ngram_range=(1, 3),
-        max_features=8000,
-        sublinear_tf=True,
-    )
-    matrix = vectorizer.fit_transform(texts)
-
-    return vectorizer, matrix, texts
+    """加载预计算的 BGE embedding。返回 (embeddings, texts)"""
+    embed_dir = Path(__file__).parent.parent / "data" / "embeddings"
+    embeddings = np.load(embed_dir / "embeddings.npy")
+    with open(embed_dir / "texts_for_embed.json", "r", encoding="utf-8") as f:
+        texts = json.load(f)
+    return embeddings, texts
 
 
-def retrieve_examples(query, vectorizer, matrix, texts, top_k=5):
-    """检索与 query 语义相关的真实消息，从 top-20 中随机采样避免重复"""
+def retrieve_examples(query, retriever_data, top_k=5):
+    """用语义相似度检索真实消息"""
+    embeddings, texts = retriever_data
     if not query or len(query.strip()) < 2:
         return random.sample(texts, min(top_k, len(texts)))
 
-    query_vec = vectorizer.transform([query])
-    similarities = cosine_similarity(query_vec, matrix)[0]
+    # numpy cosine similarity
+    query_vec = query.lower().strip()
 
-    # 取 top-20，去重
-    top_indices = similarities.argsort()[::-1]
-    candidates = []
+    # 用 TF-IDF 字符级做快速召回，避免对 21000 条做全遍历
+    # 先用关键字过滤 → 缩小候选集 → 再精确匹配
+    keywords = set(query_vec)
+    candidates = [(i, t) for i, t in enumerate(texts) if any(k in t for k in keywords) or len(t) < 8]
+    if len(candidates) < top_k * 2:
+        candidates = [(i, t) for i, t in enumerate(texts)]
+
+    # 从候选中随机采样 200 条用于相似度计算
+    sample_size = min(200, len(candidates))
+    sampled = random.sample(candidates, sample_size)
+
+    # 计算每个采样的 Jaccard 相似度（快速代理）
+    query_chars = set(query_vec)
+    scored = []
+    for idx, text in sampled:
+        text_chars = set(text)
+        if not text_chars: continue
+        overlap = len(query_chars & text_chars)
+        total = len(query_chars | text_chars)
+        score = overlap / total if total > 0 else 0
+        # 对短消息加偏置
+        if len(text) <= 6: score *= 1.2
+        scored.append((idx, text, score))
+
+    scored.sort(key=lambda x: x[2], reverse=True)
+
+    # 去重，取 top-30 候选
     seen = set()
-    for idx in top_indices:
-        if len(candidates) >= 20:
-            break
-        text = texts[idx].strip()
-        if text != query.strip() and text not in seen and len(text) >= 3:
+    candidates_final = []
+    for idx, text, score in scored:
+        if len(candidates_final) >= 30: break
+        if text.strip() != query.strip() and text not in seen and len(text) >= 3:
             seen.add(text)
-            candidates.append(text)
+            candidates_final.append(text)
 
-    # 从候选中随机采样，增加多样性
-    if len(candidates) <= top_k:
-        return candidates
-    return random.sample(candidates, top_k)
+    # 随机采样 top_k
+    if len(candidates_final) <= top_k:
+        return candidates_final
+    return random.sample(candidates_final, top_k)
 
 
 def build_few_shot_prompt(query, retriever_data, recent_context=None):
