@@ -23,29 +23,11 @@ st.markdown("""
 * { font-family: 'Noto Sans SC', -apple-system, sans-serif; }
 #MainMenu, footer, header { visibility: hidden; }
 
-/* === 全局背景 + 全屏（暴力解除所有宽度限制）=== */
+/* === 全局背景 === */
 .stApp {
-    background: linear-gradient(160deg, #0a0a14 0%, #111827 40%, #0f1729 100%);
+    background: linear-gradient(160deg, #0a0a14 0%, #111827 40%, #0f1729 100%) !important;
 }
-/* 干掉 Streamlit 所有的 max-width */
-.stMainBlockContainer,
-[data-testid="stAppViewContainer"],
-[data-testid="stAppViewContainer"] > div,
-[data-testid="stVerticalBlockBorderWrapper"],
-[data-testid="stVerticalBlock"],
-section.main > div,
-section.main > div > div,
-section.main > div > div > div {
-    max-width: 100% !important;
-}
-/* 调整外边距 */
-.block-container {
-    max-width: 100% !important;
-    padding: 0.5rem 1.5rem !important;
-}
-@media (min-width: 768px) {
-    .block-container { padding: 1rem 2rem !important; }
-}
+
 
 /* === 侧边栏 === */
 [data-testid="stSidebar"] {
@@ -269,6 +251,36 @@ hr { border-color: rgba(255,255,255,0.04) !important; }
     .welcome-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
     .auth-box { padding: 32px 24px; margin: 20px 12px; }
 }
+</style>
+
+""", unsafe_allow_html=True)
+
+# 二次注入——绕过 Streamlit 容器限制
+st.markdown("""
+<style>
+    /* 目标 Streamlit 主内容区 */
+    div[data-testid="stAppViewContainer"] section.main > div {
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+    div[data-testid="stAppViewContainer"] .block-container {
+        max-width: 100% !important;
+        width: 100% !important;
+        padding-top: 0.5rem !important;
+        padding-bottom: 0 !important;
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
+    }
+    div[data-testid="stVerticalBlock"] {
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+    /* 登录页卡片仍然居中 */
+    .auth-box {
+        max-width: 440px !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
