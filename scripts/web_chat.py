@@ -564,34 +564,38 @@ def chat_page():
     # ====== 可点击话题卡片 ======
     if not st.session_state.messages:
         st.markdown('<div class="welcome-wrap">', unsafe_allow_html=True)
-        cols = st.columns(3)
-        for i, (icon, topic) in enumerate(WELCOME_TOPICS):
-            with cols[i]:
-                if st.button(f"{icon}\n{topic}", key=f"wcard_{i}", use_container_width=True):
-                    if not key:
-                        st.session_state.card_error = "请先配置 API Key"
-                        st.rerun()
-                    else:
-                        st.session_state.messages.append({"role": "user", "content": topic})
-                        try:
-                            recent = [m for m in st.session_state.messages[-6:] if m["role"] == "assistant"]
-                            recent_text = " | ".join(m["content"][:40] for m in recent) if recent else ""
-                            few_shot = build_few_shot_prompt(topic, retriever, recent_text)
-                            msgs = [{"role": "system", "content": few_shot}] + st.session_state.messages
-                            reply, usage = call_api(msgs, key, st.session_state.model, st.session_state.temp)
-                            st.session_state.messages.append({"role": "assistant", "content": reply})
-                            if usage:
-                                cost = (usage.get("prompt_tokens", 0) * 1 +
-                                        usage.get("completion_tokens", 0) * 2) / 1_000_000
-                                st.session_state.total_cost += cost
-                        except Exception as e:
-                            st.session_state.messages.append(
-                                {"role": "assistant", "content": f"_(出错了：{str(e)[:80]})_"})
-                        st.rerun()
+        for row in range(2):
+            cols = st.columns(3)
+            for col_idx in range(3):
+                i = row * 3 + col_idx
+                if i >= len(WELCOME_TOPICS): break
+                icon, topic = WELCOME_TOPICS[i]
+                with cols[col_idx]:
+                    if st.button(f"{icon}\n{topic}", key=f"wcard_{i}", use_container_width=True):
+                        if not key:
+                            st.session_state.card_error = "请先配置 API Key"
+                            st.rerun()
+                        else:
+                            st.session_state.messages.append({"role": "user", "content": topic})
+                            try:
+                                recent = [m for m in st.session_state.messages[-6:] if m["role"] == "assistant"]
+                                recent_text = " | ".join(m["content"][:40] for m in recent) if recent else ""
+                                few_shot = build_few_shot_prompt(topic, retriever, recent_text)
+                                msgs = [{"role": "system", "content": few_shot}] + st.session_state.messages
+                                reply, usage = call_api(msgs, key, st.session_state.model, st.session_state.temp)
+                                st.session_state.messages.append({"role": "assistant", "content": reply})
+                                if usage:
+                                    cost = (usage.get("prompt_tokens", 0) * 1 +
+                                            usage.get("completion_tokens", 0) * 2) / 1_000_000
+                                    st.session_state.total_cost += cost
+                            except Exception as e:
+                                st.session_state.messages.append(
+                                    {"role": "assistant", "content": f"_(出错了：{str(e)[:80]})_"})
+                            st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
-        if st.session_state.card_error:
-            st.error(st.session_state.card_error)
-            st.session_state.card_error = ""
+    if st.session_state.card_error:
+        st.error(st.session_state.card_error)
+        st.session_state.card_error = ""
 
     # ====== 对话 ======
     for msg in st.session_state.messages:
