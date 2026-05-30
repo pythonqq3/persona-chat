@@ -404,6 +404,12 @@ def get_relationship(username):
 def do_logout():
     for k, v in INIT.items(): st.session_state[k] = v
     st.query_params.clear()
+    st.components.v1.html("""
+    <script>
+    localStorage.removeItem('zsd_remember_token');
+    parent.postMessage({type: 'clear_token'}, '*');
+    </script>
+    """, height=0)
     st.rerun()
 
 
@@ -450,6 +456,13 @@ def auth_page():
                         if remember:
                             token = make_token(u)
                             st.query_params["token"] = token
+                            # 通知父页面（iframe 外壳）保存 token
+                            st.components.v1.html(f"""
+                            <script>
+                            localStorage.setItem('zsd_remember_token', '{token}');
+                            parent.postMessage({{type: 'save_token', token: '{token}'}}, '*');
+                            </script>
+                            """, height=0)
                         st.rerun()
                     else: st.session_state.login_error = "密码错误"; st.rerun()
                 else: st.session_state.login_error = "账号不存在，请先注册"; st.rerun()

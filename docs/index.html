@@ -16,34 +16,21 @@
     var baseUrl = 'https://zhangshida.streamlit.app/';
     var query = window.location.search;
 
-    // 如果当前 URL 没有 token，尝试从 localStorage 恢复
+    // 从 URL 或 localStorage 加载 token
     if (!query.includes('token=')) {
-      var savedToken = localStorage.getItem('zsd_remember_token');
-      if (savedToken) {
-        query = query ? query + '&token=' + savedToken : '?token=' + savedToken;
-      }
-    } else {
-      // 有 token 就存到 localStorage
-      var match = query.match(/token=([^&]+)/);
-      if (match) {
-        localStorage.setItem('zsd_remember_token', match[1]);
-      }
+      var saved = localStorage.getItem('zsd_remember_token');
+      if (saved) query = '?token=' + saved;
     }
-
     document.getElementById('app').src = baseUrl + query;
 
-    // 定期同步——检测 iframe URL 变化并更新父页面和 localStorage
-    setInterval(function() {
-      try {
-        var iframeUrl = document.getElementById('app').contentWindow.location.href;
-        var tokenMatch = iframeUrl.match(/token=([^&]+)/);
-        if (tokenMatch && tokenMatch[1] !== localStorage.getItem('zsd_remember_token')) {
-          localStorage.setItem('zsd_remember_token', tokenMatch[1]);
-          var newUrl = window.location.pathname + '?token=' + tokenMatch[1];
-          window.history.replaceState({}, '', newUrl);
-        }
-      } catch(e) {} // 跨域错误忽略
-    }, 3000);
+    // 收到来自 Streamlit 的 token 保存消息
+    window.addEventListener('message', function(e) {
+      if (e.data && e.data.type === 'save_token' && e.data.token) {
+        localStorage.setItem('zsd_remember_token', e.data.token);
+        var newUrl = window.location.pathname + '?token=' + e.data.token;
+        window.history.replaceState({}, '', newUrl);
+      }
+    });
   </script>
 </body>
 </html>
