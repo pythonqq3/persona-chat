@@ -351,7 +351,8 @@ INIT = {
     "user_api_key": "", "messages": [], "total_cost": 0.0,
     "login_mode": "login", "login_error": "",
     "model": "deepseek-chat", "temp": 0.7, "show_logout": False,
-    "auto_logged_in": False, "card_error": "",
+    "auto_logged_in": False,
+    "remember_link": "", "card_error": "",
 }
 for k, v in INIT.items():
     if k not in st.session_state: st.session_state[k] = v
@@ -453,17 +454,10 @@ def auth_page():
                         saved = load_conversation(u)
                         if saved:
                             st.session_state.messages = saved
-                        # 记住我
+                        # 记住我——生成含 token 的链接供收藏
                         if remember:
                             token = make_token(u)
-                            st.query_params["token"] = token
-                            # 通知父页面（iframe 外壳）保存 token
-                            st.components.v1.html(f"""
-                            <script>
-                            localStorage.setItem('zsd_remember_token', '{token}');
-                            parent.postMessage({{type: 'save_token', token: '{token}'}}, '*');
-                            </script>
-                            """, height=0)
+                            st.session_state.remember_link = f"?token={token}"
                         st.rerun()
                     else: st.session_state.login_error = "密码错误"; st.rerun()
                 else: st.session_state.login_error = "账号不存在，请先注册"; st.rerun()
@@ -619,6 +613,15 @@ def chat_page():
             <span class="tag-item">🏃 跑步</span>
         </div>
         """, unsafe_allow_html=True)
+
+    # 收藏链接提示
+    if st.session_state.remember_link:
+        token_url = f"https://chat.061230zsd.xyz{st.session_state.remember_link}"
+        st.info(f"🔖 收藏此链接下次免登录：复制下方链接加入浏览器书签即可\n```\n{token_url}\n```")
+        if st.button("知道了，已收藏", key="dismiss_link"):
+            st.session_state.remember_link = ""
+            st.rerun()
+
     with cset:
         # 显眼的设置入口
         show_settings = st.button("⚙️ 设置", use_container_width=True, key="show_settings_btn",
@@ -786,26 +789,23 @@ def verify_token(token):
     except:
         return None
 
-# 页面加载时检测 token（仅第一次，防止循环）
-if not st.session_state.logged_in and not st.session_state.get("auto_logged_in", False):
+# 页面加载时从 URL 参数自动登录
+if not st.session_state.logged_in:
     try:
         url_token = st.query_params.get("token")
         if url_token:
             username = verify_token(url_token)
             if username:
                 au = get_auth_users()
-                ad = get_admin_set()
                 if username in au:
                     st.session_state.logged_in = True
                     st.session_state.username = username
                     st.session_state.is_authorized = True
-                    st.session_state.is_admin = username in ad
+                    st.session_state.is_admin = username in get_admin_set()
                     saved = load_conversation(username)
                     if saved:
                         st.session_state.messages = saved
-                    # 清除 token 防止循环，但保留到 localStorage 已通过父页面处理
-                    st.query_params.clear()
-                    st.rerun()
+                    # 已经通过 URL 登录，不 rerun，直接继续
     except:
         pass
 
