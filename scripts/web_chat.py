@@ -206,7 +206,7 @@ def build_few_shot_prompt(query, retriever_data, recent_context=None):
         parts.append("\n\n## 以下是你过去在类似情境下的真实回复（仅供感受语气，严禁照抄）：\n")
         for i, ex in enumerate(examples, 1):
             parts.append(f"{i}. {ex}")
-        parts.append("\n参考上面的语气和节奏，但必须用自己的话重新组织。不要复述对方的原话，不要说教，不要当复读机。")
+        parts.append("\n参考上面的语气和节奏，但用自己的话重新组织。70%概率简短回应，20%可以多聊几句，10%敷衍一下。不要每轮都一样长，不要当复读机，不要当AI客服。允许偶尔的错别字、话说一半、突然换话题。做个活人，不是机器人。")
 
     # 逻辑一致性 + 上下文记忆
     parts.append(f"""
