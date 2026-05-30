@@ -406,12 +406,6 @@ def get_relationship(username):
 def do_logout():
     for k, v in INIT.items(): st.session_state[k] = v
     st.query_params.clear()
-    st.components.v1.html("""
-    <script>
-    localStorage.removeItem('zsd_remember_token');
-    parent.postMessage({type: 'clear_token'}, '*');
-    </script>
-    """, height=0)
     st.rerun()
 
 
@@ -612,13 +606,7 @@ def chat_page():
         </div>
         """, unsafe_allow_html=True)
 
-    # 收藏链接提示
-    if st.session_state.remember_link:
-        token_url = f"https://chat.061230zsd.xyz{st.session_state.remember_link}"
-        st.info(f"🔖 收藏此链接下次免登录：复制下方链接加入浏览器书签即可\n```\n{token_url}\n```")
-        if st.button("知道了，已收藏", key="dismiss_link"):
-            st.session_state.remember_link = ""
-            st.rerun()
+
 
     with cset:
         # 显眼的设置入口
