@@ -2,35 +2,11 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta http-equiv="refresh" content="0;url=https://zhangshida.streamlit.app/">
   <title>张仕达的数字分身</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #0e1117; width: 100vw; height: 100vh; overflow: hidden; }
-    iframe { width: 100vw; height: 100vh; border: none; display: block; }
-  </style>
 </head>
-<body>
-  <iframe id="app" src="" allow="microphone; camera"></iframe>
-  <script>
-    var baseUrl = 'https://zhangshida.streamlit.app/';
-    var query = window.location.search;
-
-    // 从 URL 或 localStorage 加载 token
-    if (!query.includes('token=')) {
-      var saved = localStorage.getItem('zsd_remember_token');
-      if (saved) query = '?token=' + saved;
-    }
-    document.getElementById('app').src = baseUrl + query;
-
-    // 收到来自 Streamlit 的 token 保存消息
-    window.addEventListener('message', function(e) {
-      if (e.data && e.data.type === 'save_token' && e.data.token) {
-        localStorage.setItem('zsd_remember_token', e.data.token);
-        var newUrl = window.location.pathname + '?token=' + e.data.token;
-        window.history.replaceState({}, '', newUrl);
-      }
-    });
-  </script>
+<body style="background:#0d0d12;color:#d0d0e0;text-align:center;padding-top:40vh;font-family:sans-serif;">
+  正在跳转...<br>
+  <a href="https://zhangshida.streamlit.app/" style="color:#6366f1;">如果没有自动跳转，点这里</a>
 </body>
 </html>
