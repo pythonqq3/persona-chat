@@ -361,8 +361,26 @@ def chat_page():
                 st.download_button("📥 导出", txt, f"聊天_{datetime.now():%m%d_%H%M}.txt",
                                    use_container_width=True)
 
-        if st.button("🚪 退出登录", use_container_width=True):
-            logout()
+        st.markdown("---")
+        # 退出确认
+        if "show_logout_confirm" not in st.session_state:
+            st.session_state.show_logout_confirm = False
+
+        if not st.session_state.show_logout_confirm:
+            if st.button("🚪 退出登录", use_container_width=True):
+                st.session_state.show_logout_confirm = True
+                st.rerun()
+        else:
+            st.warning("确定要退出吗？对话记录将清空")
+            cq1, cq2 = st.columns(2)
+            with cq1:
+                if st.button("✅ 确认退出", use_container_width=True, type="primary"):
+                    st.session_state.show_logout_confirm = False
+                    logout()
+            with cq2:
+                if st.button("❌ 取消", use_container_width=True):
+                    st.session_state.show_logout_confirm = False
+                    st.rerun()
 
         st.caption("⚡ DeepSeek · 人格 V5")
 
