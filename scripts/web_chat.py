@@ -99,28 +99,41 @@ def get_secrets_safe():
 
 
 def get_authorized_users():
-    """获取授权用户字典 {username: password_hash}"""
+    """获取授权用户字典 {username: password_hash}，兼容逗号分隔和换行分隔"""
     try:
         auth_str = st.secrets.get("authorized_users", "")
     except Exception:
         return {}
     users = {}
-    if auth_str:
-        for entry in auth_str.split(","):
-            entry = entry.strip()
-            if ":" in entry:
-                u, h = entry.split(":", 1)
-                users[u.strip()] = h.strip()
+    if auth_str and auth_str.strip():
+        # 统一处理：先按换行分，再按逗号分，去空白
+        entries = []
+        for line in auth_str.strip().split("\n"):
+            for entry in line.split(","):
+                entry = entry.strip()
+                if entry and ":" in entry:
+                    entries.append(entry)
+        for entry in entries:
+            u, h = entry.split(":", 1)
+            users[u.strip()] = h.strip()
     return users
 
 
 def get_admin_set():
-    """获取管理员集合"""
+    """获取管理员集合，兼容逗号和换行"""
     try:
         s = st.secrets.get("admin_users", "")
     except Exception:
         return set()
-    return set(u.strip() for u in s.split(",") if u.strip())
+    if not s or not s.strip():
+        return set()
+    result = set()
+    for line in s.strip().split("\n"):
+        for u in line.split(","):
+            u = u.strip()
+            if u:
+                result.add(u)
+    return result
 
 
 def get_api_key():
