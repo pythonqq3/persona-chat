@@ -385,7 +385,7 @@ def chat_page():
             <div style="font-size:11px;color:{bc};margin-top:2px;">{badge}</div>
         </div>""", unsafe_allow_html=True)
 
-        with st.expander("🔑 API", expanded=False):
+        with st.expander("🔑 API 密钥", expanded=True):
             if is_adm or is_au:
                 k = skey()
                 m = (k[:6] + "····" + k[-4:]) if len(k) > 10 else "(未配置)"
@@ -398,7 +398,7 @@ def chat_page():
                 if nk != st.session_state.user_api_key: st.session_state.user_api_key = nk
                 st.caption("platform.deepseek.com")
 
-        with st.expander("⚙️ 设置", expanded=False):
+        with st.expander("⚙️ 对话设置", expanded=True):
             st.session_state.model = st.selectbox(
                 "模型", ["deepseek-chat", "deepseek-reasoner"],
                 format_func=lambda x: "日常对话" if "chat" in x else "深度思考")
