@@ -23,9 +23,19 @@ st.markdown("""
 * { font-family: 'Noto Sans SC', -apple-system, sans-serif; }
 #MainMenu, footer, header { visibility: hidden; }
 
-/* === 全局背景 === */
+/* === 全局背景 + 全屏 === */
 .stApp {
     background: linear-gradient(160deg, #0a0a14 0%, #111827 40%, #0f1729 100%);
+}
+[data-testid="stAppViewContainer"] > .main {
+    max-width: 100% !important;
+}
+.block-container {
+    max-width: 100% !important;
+    padding: 1rem 2rem !important;
+}
+[data-testid="stVerticalBlock"] {
+    max-width: 100% !important;
 }
 
 /* === 侧边栏 === */
