@@ -1,6 +1,5 @@
 # 聊天原始数据（隐私）
 data/raw/
-data/clean/
 
 # Python
 __pycache__/

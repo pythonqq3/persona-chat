@@ -1,11 +1,13 @@
 """
-张仕达数字分身
+张仕达数字分身 · L2 少样本检索版
 """
 
 import streamlit as st
-import json, urllib.request, urllib.error, os, re, hashlib
+import json, urllib.request, urllib.error, os, re, hashlib, pickle, random
 from datetime import datetime
 from pathlib import Path
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 st.set_page_config(
     page_title="张仕达", page_icon="👤", layout="wide",
@@ -121,6 +123,76 @@ def load_skill():
 
 
 SYSTEM_PROMPT = load_skill()
+
+
+# ============================================================
+# L2 检索系统：从真实消息中匹配最相似的回复示例
+# ============================================================
+@st.cache_resource
+def build_retriever():
+    """构建 TF-IDF 检索器。返回 (vectorizer, matrix, messages_list)"""
+    data_path = Path(__file__).parent.parent / "data" / "clean" / "cleaned_messages.json"
+    with open(data_path, "r", encoding="utf-8") as f:
+        messages = json.load(f)
+
+    texts = [m["content"] for m in messages if len(m["content"]) >= 3]
+
+    vectorizer = TfidfVectorizer(
+        analyzer="char",
+        ngram_range=(1, 3),
+        max_features=8000,
+        sublinear_tf=True,
+    )
+    matrix = vectorizer.fit_transform(texts)
+
+    return vectorizer, matrix, texts
+
+
+def retrieve_examples(query, vectorizer, matrix, texts, top_k=5):
+    """检索与 query 最相似的 top_k 条真实消息"""
+    if not query or len(query.strip()) < 2:
+        return random.sample(texts, min(top_k, len(texts)))
+
+    query_vec = vectorizer.transform([query])
+    similarities = cosine_similarity(query_vec, matrix)[0]
+
+    # 排除完全一样的消息
+    top_indices = similarities.argsort()[::-1]
+    results = []
+    seen = set()
+    for idx in top_indices:
+        if len(results) >= top_k:
+            break
+        text = texts[idx].strip()
+        if text != query.strip() and text not in seen:
+            seen.add(text)
+            results.append(text)
+
+    return results
+
+
+def build_few_shot_prompt(query, retriever_data):
+    """构建包含少样本示例的完整系统提示词"""
+    if retriever_data is None:
+        return SYSTEM_PROMPT
+
+    vectorizer, matrix, texts = retriever_data
+    examples = retrieve_examples(query, vectorizer, matrix, texts, top_k=5)
+
+    if not examples:
+        return SYSTEM_PROMPT
+
+    # 随机排列示例，避免固定模式
+    random.shuffle(examples)
+
+    few_shot_block = "\n\n## 以下是你在类似情境下的真实回复（必须模仿这种语气和节奏）：\n\n"
+    for i, ex in enumerate(examples, 1):
+        few_shot_block += f"{i}. {ex}\n"
+
+    few_shot_block += "\n用和上面完全一致的语气、长度、用词来回复当前消息。"
+
+    return SYSTEM_PROMPT + few_shot_block
+
 
 WELCOME_TOPICS = [
     ("🏸", "羽毛球怎么练"),
@@ -295,6 +367,9 @@ def chat_page():
     is_adm = st.session_state.is_admin
     is_au = st.session_state.is_authorized
     key = active_key()
+
+    # 初始化检索器（缓存，只加载一次）
+    retriever = build_retriever()
 
     # ====== 侧边栏 ======
     with st.sidebar:
@@ -471,7 +546,8 @@ def chat_page():
                     else:
                         st.session_state.messages.append({"role": "user", "content": topic})
                         try:
-                            msgs = [{"role": "system", "content": SYSTEM_PROMPT}] + st.session_state.messages
+                            few_shot = build_few_shot_prompt(topic, retriever)
+                            msgs = [{"role": "system", "content": few_shot}] + st.session_state.messages
                             reply, usage = call_api(msgs, key, st.session_state.model, st.session_state.temp)
                             st.session_state.messages.append({"role": "assistant", "content": reply})
                             if usage:
@@ -506,7 +582,8 @@ def chat_page():
                 ph.markdown('<div class="type-dots"><span></span><span></span><span></span></div>',
                             unsafe_allow_html=True)
                 try:
-                    msgs = [{"role": "system", "content": SYSTEM_PROMPT}] + st.session_state.messages
+                    few_shot = build_few_shot_prompt(prompt, retriever)
+                    msgs = [{"role": "system", "content": few_shot}] + st.session_state.messages
                     reply, usage = call_api(msgs, key, st.session_state.model, st.session_state.temp)
                     ph.markdown(reply)
                     st.session_state.messages.append({"role": "assistant", "content": reply})
