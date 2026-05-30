@@ -205,18 +205,23 @@ def build_few_shot_prompt(query, retriever_data, recent_context=None):
             parts.append(f"{i}. {ex}")
         parts.append("\n用和上面完全一致的语气、长度、用词来回复。")
 
-    # 逻辑一致性检查
-    parts.append("""
+    # 逻辑一致性 + 上下文记忆
+    parts.append(f"""
 
-## 逻辑一致性铁律（每次回复前必须自检）
+## 对话上下文与逻辑自检
 
-1. **记住自己刚说过的话**：如果几轮前说过"A"，现在不能说"非A"。被追问时可以用"我之前不是说了吗"带过，但绝不能推翻自己
-2. **前后一致**：已经说过没谈过恋爱，就不能忽然聊前任。已经说过五公里18分19，下次不能再编一个数字
-3. **不要左右互搏**：同一轮回复里不能前半句说"还行"，后半句说"不太行"。选一个立场站住
-4. **被质疑时**：如果真的前后矛盾了，用自嘲化解——"啊？我说过吗 忘了"或"行吧 那我记错了"——而不是硬圆场
-5. **不确定的事不编**：不知道就说不知道，不要为了连贯而编造
+### 最近几轮对话摘要
+{recent_context if recent_context else "（新对话，暂无历史）"}
 
-在生成回复前，先扫一眼对话历史，确认这次说的话和之前不冲突。
+### 铁律
+1. **必须引用上文**：如果对方在延续之前的话题，你的回复要能接上。不要每轮都像在重新开始聊天
+2. **记住自己说过的话**：几轮前说过"A"，现在不能说"非A"。真记错了就说"啊？我说过吗 忘了"
+3. **同一话题保持一致**：聊运动就是运动，聊感情就是感情。不要聊着羽毛球突然跳到编程
+4. **数字不能编**：说过的数字不能变。五公里18分19永远是这个数
+5. **不要左右互搏**：同一句里不能"还行"+"不太行"，选一个立场
+6. **自然过渡**：话题转换时要自然——"对了，你刚才说那个..."——而不是生硬跳转
+
+在生成回复前，先读一遍最近对话，确认你的回复是接得上的。
 """)
 
     return "\n".join(parts)
@@ -578,8 +583,8 @@ def chat_page():
                         else:
                             st.session_state.messages.append({"role": "user", "content": topic})
                             try:
-                                recent = [m for m in st.session_state.messages[-6:] if m["role"] == "assistant"]
-                                recent_text = " | ".join(m["content"][:40] for m in recent) if recent else ""
+                                recent = st.session_state.messages[-8:]
+                                recent_text = "\n".join(f"对方/我：{m['content'][:80]}" for m in recent) if recent else ""
                                 few_shot = build_few_shot_prompt(topic, retriever, recent_text)
                                 msgs = [{"role": "system", "content": few_shot}] + st.session_state.messages
                                 reply, usage = call_api(msgs, key, st.session_state.model, st.session_state.temp)
@@ -616,8 +621,8 @@ def chat_page():
                 ph.markdown('<div class="type-dots"><span></span><span></span><span></span></div>',
                             unsafe_allow_html=True)
                 try:
-                    recent = [m for m in st.session_state.messages[-6:] if m["role"] == "assistant"]
-                    recent_text = " | ".join(m["content"][:40] for m in recent) if recent else ""
+                    recent = st.session_state.messages[-8:]
+                    recent_text = "\n".join(f"对方/我：{m['content'][:80]}" for m in recent) if recent else ""
                     few_shot = build_few_shot_prompt(prompt, retriever, recent_text)
                     msgs = [{"role": "system", "content": few_shot}] + st.session_state.messages
                     reply, usage = call_api(msgs, key, st.session_state.model, st.session_state.temp)
