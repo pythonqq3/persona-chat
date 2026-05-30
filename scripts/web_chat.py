@@ -18,8 +18,8 @@ st.set_page_config(
 # ============================================================
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap');
-*{font-family:'Inter','Noto Sans SC',-apple-system,sans-serif}
+/* 使用系统字体——秒开，不依赖 Google CDN */
+*{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei','Helvetica Neue',sans-serif}
 #MainMenu,footer,header{visibility:hidden}
 .stApp{background:#0d0d12}
 [data-testid="stSidebar"]{background:#0a0a0f!important;border-right:1px solid #1a1a24!important}
@@ -87,12 +87,12 @@ st.markdown("""
 }
 
 /* 登录 */
-.login-wrap{display:flex;align-items:center;justify-content:center;min-height:85vh;flex-direction:column;gap:18px}
+.login-wrap{display:flex;align-items:center;justify-content:center;min-height:auto;padding:40px 0;flex-direction:column;gap:16px}
 .login-brand{text-align:center}
-.login-brand .lb-icon{font-size:48px;display:block;margin-bottom:8px}
+.login-brand .lb-icon{font-size:36px;display:block;margin-bottom:6px}
 .login-brand .lb-name{font-size:20px;font-weight:700;color:#d0d0e0}
 .login-brand .lb-tag{font-size:12px;color:#606078;margin-top:2px}
-.login-card{width:400px;background:#101016;border:1px solid #1a1a26;border-radius:16px;padding:44px 40px;text-align:center}
+.login-card{width:400px;background:#101016;border:1px solid #1a1a26;border-radius:16px;padding:36px 36px;text-align:center}
 .login-card h2{font-size:20px;font-weight:600;color:#e4e4ec;margin:0 0 4px}
 .login-card .lc-sub{font-size:13px;color:#606078;margin-bottom:28px}
 .login-card input{background:#0d0d14!important;border:1px solid #1e1e2e!important;border-radius:8px!important;color:#d0d0e0!important;padding:10px 14px!important;font-size:14px!important}
