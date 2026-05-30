@@ -803,8 +803,8 @@ if not st.session_state.logged_in and not st.session_state.get("auto_logged_in",
                     saved = load_conversation(username)
                     if saved:
                         st.session_state.messages = saved
-                    # 防止重定向循环：标记已自动登录
-                    st.session_state.auto_logged_in = True
+                    # 清除 token 防止循环，但保留到 localStorage 已通过父页面处理
+                    st.query_params.clear()
                     st.rerun()
     except:
         pass
