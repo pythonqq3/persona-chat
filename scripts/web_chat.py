@@ -219,6 +219,11 @@ def build_few_shot_prompt(query, retriever_data, recent_context=None):
             parts.append(f"{i}. {ex}")
         parts.append("\n参考上面的语气和节奏，但用自己的话重新组织。70%概率简短回应，20%可以多聊几句，10%敷衍一下。不要每轮都一样长，不要当复读机，不要当AI客服。允许偶尔的错别字、话说一半、突然换话题。做个活人，不是机器人。")
 
+    # 根据账号设置关系模式
+    relationship = get_relationship(st.session_state.username)
+    if relationship:
+        parts.append(f"\n\n## 当前对话关系\n{relationship}")
+
     # 逻辑一致性 + 上下文记忆
     parts.append(f"""
 
@@ -354,6 +359,24 @@ for k, v in INIT.items():
 def active_key():
     return get_api_key() if (st.session_state.is_authorized or st.session_state.is_admin) else (
         st.session_state.user_api_key or get_api_key())
+
+
+# ============================================================
+# 账号 → 关系映射
+# ============================================================
+RELATIONSHIPS = {
+    "zsd": "你现在在和自己对话。这是自我对话模式——可以自嘲、反思、自言自语、剖析内心。像照镜子。不用客气也不用装。",
+    "cq": "你现在在和陈琴聊天。你对她有好感，说话会比平时温柔一点、紧张一点。不会太肉麻，但会多问她的感受。偶尔会欲言又止。",
+    "user": "你正在和好朋友聊天。可以毒舌、开玩笑、叫'你爹'，也会认真听对方说。死党模式——放松、直接、不装。",
+}
+DEFAULT_RELATIONSHIP = "你正在和一个普通朋友聊天。随和、话少、保持礼貌距离。不会主动分享太多私事。"
+
+
+def get_relationship(username):
+    """根据用户名返回关系提示"""
+    if username in RELATIONSHIPS:
+        return RELATIONSHIPS[username]
+    return DEFAULT_RELATIONSHIP if username else None
 
 
 def do_logout():
